@@ -4,7 +4,10 @@ node_modules/
 /blob-report/
 /playwright/.cache/
 .env
+.env.qa
+.env.prod
 .DS_Store
+auth.json
 allure-results/
 allure-report/
 .playwright-cli/

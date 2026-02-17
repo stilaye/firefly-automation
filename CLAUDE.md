@@ -77,32 +77,38 @@ npm run format
 ## Architecture Conventions
 
 ### Tests (`tests/`)
+
 - File naming: `<feature>.flow.spec.ts` or `<feature>.lifecycle.spec.ts`
 - Tests contain **zero business logic** - they orchestrate flows using API clients and UI page objects
 - Import `test` and `expect` from `fixtures/browser.fixture` (NOT directly from `@playwright/test`)
 - Use `test.describe()` blocks to group related test cases
 
 ### API Clients (`api/clients/`)
+
 - File naming: `<resource>.client.ts`
 - Each client is a class that takes `APIRequestContext` in the constructor
 - Encapsulate all HTTP interactions here
 
 ### Page Objects (`ui/models/`)
+
 - File naming: `<page>.model.ts` or `<page>.page.ts`
 - Each POM is a class that takes Playwright `Page` in the constructor
 - Use user-facing locators: `getByRole()`, `getByLabel()`, `getByTestId()` - avoid brittle CSS selectors
 - Adobe Firefly uses dynamic CSS class names - never rely on them
 
 ### Validators (`ui/validators/`)
+
 - File naming: `<resource>.validator.ts`
 - Static validation methods for response/UI assertion logic
 
 ### Fixtures (`fixtures/`)
+
 - Extend Playwright's `base.test` using `base.extend({})`
 - Export custom `test` and `expect` for use in test files
 - Handle setup/teardown (auth, browser context, logging)
 
 ### Types
+
 - API interfaces go in `api/api.types.ts`
 - UI interfaces go in `ui/ui.types.ts`
 

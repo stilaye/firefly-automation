@@ -1,64 +1,127 @@
 # Playwright-TypeScript Test Automation Framework for Adobe Firefly
 
-This project implements a scalable test automation framework using Playwright and TypeScript, following a clean architecture pattern.
+This project implements a scalable test automation framework using Playwright and TypeScript, following a clean architecture pattern with 7 distinct layers.
 
-## Architecture Overview
+## Architecture Layers
 
-The framework is structured to separate concerns and ensure maintainability:
+### 1. Test Layer (`/tests`)
+Playwright specs organized by feature in TypeScript strict mode. Tests contain zero business logic — they orchestrate flows using API clients and UI page objects.
 
-- **API Layer (`/api`)**: Handles all API interactions.
-  - `clients/`: Business-logic specific API clients (auth, user, order).
-  - `api.types.ts`: Shared API interfaces (User, Order).
-- **UI Layer (`/ui`)**: Encapsulates UI interactions and validations.
-  - `models/`: Page Object Models (POM) for interacting with UI elements.
-  - `validators/`: Reusable validation logic.
-  - `ui.types.ts`: Shared UI interfaces.
-- **Tests (`/tests`)**: Contains the actual test scenarios (Business Flows).
-  - Tests contain zero logic; they orchestrate the flow using API and UI layers.
-- **Fixtures (`/fixtures`)**: Playwright fixtures for test isolation and setup (e.g., authentication, browser context).
-- **Utilities (`/utils`)**: Core framework utilities (config, logging, helpers).
+- `login.flow.spec.ts` — Authentication flow (3 tests)
+- `generation.flow.spec.ts` — Text-to-image generation (9 tests)
+- `editing.flow.spec.ts` — Image editor (8 tests)
+- `projects.flow.spec.ts` — Project/file management (8 tests)
+- `checkout.flow.spec.ts` — Checkout flow
+- `user.lifecycle.spec.ts` — User lifecycle
+
+### 2. Page Object Layer (`/ui/models`)
+Encapsulated page objects with typed locators extracted from the live site.
+
+- `login.page.ts` — Adobe IMS login flow (`getByLabel('Email address')`, `getByRole('button', { name: 'Sign In' })`)
+- `generate.page.ts` — Image generation (`[data-testid="generate-image-generate-button"]`, `getByLabel('Prompt')`)
+- `editor.page.ts` — Image editor (`[data-testid="instruct-generate-button"]`, upload area, tab navigation)
+- `project.page.ts` — Your stuff / files (`[data-testid="your-files-files-container"]`, nav tabs, search)
+- `user.model.ts` — Generic user page
+
+### 3. Fixture Layer (`/fixtures`)
+Custom Playwright fixtures for auth, test data, and feature flags.
+
+- `auth.fixture.ts` — Authenticated sessions via `auth.json` storage state (login once, reuse everywhere)
+- `data.fixture.ts` — API-based test data setup/teardown with automatic cleanup
+- `feature.flag.fixture.ts` — Feature flag toggling via localStorage
+- `browser.fixture.ts` — Composed entry point merging all fixtures via `mergeTests()`
+
+### 4. Utility Layer (`/utils`)
+Shared helpers for config, logging, API mocking, visual regression, and performance.
+
+- `config.ts` — Environment config (`BASE_URL`, `USERNAME`, `PASSWORD`, `SLACK_WEBHOOK_URL`)
+- `logger.ts` — Structured logging (info/error/warn)
+- `test.context.ts` — Test helpers (unique ID generation)
+- `api.mock.ts` — API mocking (`mockGenerationAPI()`, `mockRoute()`, `mockGenerationFailure()`)
+- `visual.helper.ts` — Visual regression (`compareScreenshot()` with `toHaveScreenshot()` + pixel threshold)
+- `perf.metrics.ts` — Performance metrics (`measurePageLoad()`, `measureGenerationTime()`)
+
+### 5. Config Layer
+- `playwright.config.ts` — Browser projects (Chromium, Firefox, WebKit), parallelism, retries, reporters
+- `tsconfig.json` — TypeScript strict mode, path aliases (`@api/*`, `@ui/*`, `@utils/*`, `@fixtures/*`)
+- `.env.dev` / `.env.qa` / `.env.prod` — Environment-specific variables
+- `eslint.config.mjs` — ESLint flat config with Playwright + TypeScript rules
+- `.prettierrc` — Prettier (single quotes, semicolons, trailing commas, 2-space indent, 100 char width)
+
+### 6. CI/CD Layer
+_Not yet implemented._ Planned: GitHub Actions / Jenkins pipelines for PR tests, nightly regression, deployment gates.
+
+### 7. Reporting Layer
+Four reporters run after every test execution:
+
+- **HTML Report** — Playwright's built-in interactive report
+- **Allure Dashboard** — Rich dashboards with custom categories (failures, timeouts, flaky, skipped) and environment metadata
+- **Slack Alerts** (`utils/slack.reporter.ts`) — Posts test summary to Slack via webhook with pass/fail counts, duration, failed test details, and environment context
+- **Test Analytics** (`utils/analytics.reporter.ts`) — Tracks results over time in `test-results/analytics.json` with flakiness detection, slow test tracking, and trend analysis
 
 ## Project Structure
 
 ```
 /
-├── api/                        # API clients and types
-│   ├── clients/                # auth.client.ts, user.client.ts, order.client.ts
-│   └── api.types.ts            # Shared API interfaces
-├── ui/                         # Page objects and validators
-│   ├── models/                 # Page Object Models
-│   ├── validators/             # Validation logic
-│   └── ui.types.ts             # Shared UI interfaces
-├── tests/                      # Test specifications
-├── fixtures/                   # Playwright fixtures
-│   ├── browser.fixture.ts      # Custom test/expect exports
-│   └── test.context.ts         # Test context extensions
-├── utils/                      # Core utilities
-│   ├── config.ts               # Environment config
-│   ├── logger.ts               # Logging utility
-│   └── test.context.ts         # Test helpers (ID generation)
-├── docs/                       # Documentation
-├── .env.*                      # Environment variables
-├── playwright.config.ts        # Playwright configuration
-├── tsconfig.json               # TypeScript configuration
-└── eslint.config.mjs           # ESLint flat config
+├── api/                            # API layer
+│   ├── clients/                    # auth.client.ts, user.client.ts, order.client.ts
+│   └── api.types.ts                # API interfaces (User, Order, GenerationRequest, etc.)
+├── ui/                             # UI layer
+│   ├── models/                     # Page Object Models
+│   │   ├── login.page.ts           # Adobe IMS login
+│   │   ├── generate.page.ts        # Image generation
+│   │   ├── editor.page.ts          # Image editor
+│   │   ├── project.page.ts         # Your stuff / files
+│   │   └── user.model.ts           # Generic user page
+│   ├── validators/                 # Validation logic
+│   └── ui.types.ts                 # UI interfaces (GeneratedImage, EditorState, etc.)
+├── tests/                          # Test specifications (30 tests × 3 browsers = 90)
+│   ├── login.flow.spec.ts
+│   ├── generation.flow.spec.ts
+│   ├── editing.flow.spec.ts
+│   ├── projects.flow.spec.ts
+│   ├── checkout.flow.spec.ts
+│   └── user.lifecycle.spec.ts
+├── fixtures/                       # Playwright fixtures
+│   ├── browser.fixture.ts          # Composed entry point (import test/expect from here)
+│   ├── auth.fixture.ts             # Auth with storage state
+│   ├── data.fixture.ts             # API test data setup/teardown
+│   ├── feature.flag.fixture.ts     # Feature flag toggling
+│   └── test.context.ts             # Context extensions
+├── utils/                          # Core utilities + reporters
+│   ├── config.ts                   # Environment config
+│   ├── logger.ts                   # Logging utility
+│   ├── test.context.ts             # Test helpers
+│   ├── api.mock.ts                 # API mocking helpers
+│   ├── visual.helper.ts            # Visual regression helpers
+│   ├── perf.metrics.ts             # Performance metrics
+│   ├── slack.reporter.ts           # Slack webhook reporter
+│   └── analytics.reporter.ts       # Test analytics reporter
+├── docs/                           # Documentation
+├── .env.dev                        # Dev environment variables
+├── .env.qa                         # QA environment variables
+├── .env.prod                       # Prod environment variables
+├── playwright.config.ts            # Playwright configuration
+├── tsconfig.json                   # TypeScript configuration
+└── eslint.config.mjs               # ESLint flat config
 ```
 
 ## Prerequisites
 
 - Node.js (v18 or higher)
 - npm
+- Java Runtime Environment (JRE) — for Allure reports only
 
 ## Installation
 
-1.  Clone the repository.
-2.  Install dependencies:
+1. Clone the repository.
+2. Install dependencies:
 
 ```bash
 npm install
 ```
 
-3.  Install Playwright browsers:
+3. Install Playwright browsers:
 
 ```bash
 npx playwright install
@@ -72,55 +135,57 @@ Environment variables are managed using `.env` files.
 - `.env.qa`: QA environment
 - `.env.prod`: Production environment
 
-Key variables: `BASE_URL`, `USERNAME`, `PASSWORD`
+Key variables: `BASE_URL`, `USERNAME`, `PASSWORD`, `SLACK_WEBHOOK_URL`
 
 ## Running Tests
 
 **Default (Headless)**:
 Tests run in headless mode by default.
+
 ```bash
 npx playwright test
 ```
 
+**CI Mode** (sequential, with retries):
+
+```bash
+npm run test:ci
+```
+
 **Headed Mode** (Visible Browser):
+
 ```bash
 npx playwright test --headed
 ```
 
 **Specific Browser**:
+
 ```bash
 npx playwright test --project=chromium
 npx playwright test --project=firefox
 npx playwright test --project=webkit
 ```
 
-**Run on All Browsers**:
-(Ensure all projects are uncommented in `playwright.config.ts`)
-```bash
-npx playwright test
-```
-
 **Parallel Execution**:
-By default, tests run in parallel. You can control the number of workers:
+By default, tests run in parallel. Control the number of workers:
+
 ```bash
 npx playwright test --workers=4
 ```
-To run entirely sequentially (one at a time):
-```bash
-npx playwright test --workers=1
-```
 
 **Specific Test File**:
+
 ```bash
-npx playwright test tests/login.flow.spec.ts
+npx playwright test tests/generation.flow.spec.ts
 ```
 
 **UI Mode** (Interactive detailed view):
+
 ```bash
 npx playwright test --ui
 ```
 
-List tests without running:
+**List tests without running**:
 
 ```bash
 npx playwright test --list
@@ -128,52 +193,85 @@ npx playwright test --list
 
 ## Reports
 
-### HTML Report (Default)
-
-After running tests, an HTML report is generated. Serve it with:
+### HTML Report
 
 ```bash
-npx playwright show-report
+npm run report:show
 ```
 
-### Allure Report
+### Allure Dashboard
 
-This framework supports Allure reporting.
+```bash
+npm run report:allure
+npm run show-report:allure
+```
 
-**Prerequisite:** valid Java Runtime Environment (JRE) installed.
+Includes custom categories (failures, timeouts, flaky, skipped) and environment metadata.
 
-1.  Run tests (Allure results are automatically generated in `./allure-results`):
-    ```bash
-    npm test
-    ```
-2.  Generate and open the Allure report:
-    ```bash
-    npm run report:allure
-    npm run show-report:allure
-    ```
+### Slack Alerts
+
+Set `SLACK_WEBHOOK_URL` in your `.env` file to receive test summaries in Slack after each run. The message includes:
+- Pass/fail/skipped/flaky counts
+- Total duration
+- Failed test details with file names and error messages
+- Environment and branch context
+
+### Test Analytics
+
+View trends across historical runs:
+
+```bash
+npm run report:analytics
+```
+
+Analytics data is stored in `test-results/analytics.json` and tracks:
+- Per-test pass/fail/duration history
+- Flaky test frequency (tests that pass on retry)
+- Slowest test trends (rolling average)
+
+## Key Design Decisions
+
+- **Test Data**: API fixtures for setup/teardown — never UI for setup
+
+- **AI Output Testing**: Mock generation API for deterministic tests; separate smoke tests for non-deterministic with broad assertions
+- **Parallelism**: Playwright `fullyParallel: true` locally, sequential on CI with browser contexts for isolation
+- **Visual Regression**: `toHaveScreenshot()` with pixel threshold via `utils/visual.helper.ts`
+
+## Development Workflow
+
+### Pull Requests
+
+We use a standard template for all Pull Requests (PRs) to ensure consistency and quality. When you open a PR, the description will be automatically populated with:
+
+- **JIRA Ticket**: Link to the tracking ticket.
+- **Problem**: Context on what is being solved.
+- **Solution**: Technical details of the implementation.
+- **Test Results**: Evidence of testing (screenshots, logs).
+
+Please fill out all sections before requesting a review.
 
 ## Static Analysis & QA
 
-To ensure code quality, this framework includes linting and formatting tools. These should be run before pushing code.
-
 ### Linting (ESLint)
 
-Checks for syntax errors and best practices.
+Enforces code quality and **mandatory documentation**.
+
+- **JSDoc/TSDoc**: All functions, classes, and methods must have documentation comments.
+- **Rules**: Playwright best practices + TypeScript recommendations.
 
 ```bash
 npm run lint
-```
-
-Auto-fix fixable issues:
-
-```bash
 npm run lint:fix
 ```
 
 ### Formatting (Prettier)
 
-Ensures consistent code style.
-
 ```bash
 npm run format
 ```
+
+## Before Pushing Code
+
+1. `npm run lint` — fix any lint errors
+2. `npm run format` — ensure consistent formatting
+3. `npx playwright test` — ensure all tests pass

@@ -105,14 +105,14 @@ Since Firefly requires Adobe ID login:
 
 1.  **Avoid UI Login in Every Test**: It's slow and flaky.
 2.  **Use `auth.json` Storage State**:
-    * Login *once* in a `global-setup` or a specific auth spec.
-    * Save the state: `await context.storageState({ path: 'auth.json' });` \* Load it in `playwright.config.ts`:
-    `typescript
-        use: {
-          storageState: 'auth.json',
-        }
-        `
-    This is already partially set up in your `api/clients/auth.client.ts` and `fixtures/`.
+    - Login _once_ in a `global-setup` or a specific auth spec.
+    - Save the state: `await context.storageState({ path: 'auth.json' });` \* Load it in `playwright.config.ts`:
+      `typescript
+use: {
+  storageState: 'auth.json',
+}
+`
+      This is already partially set up in your `api/clients/auth.client.ts` and `fixtures/`.
 
 ---
 
