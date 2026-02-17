@@ -1,4 +1,0 @@
-[    1512ms] [ERROR] Failed to load resource: net::ERR_HTTP2_PROTOCOL_ERROR @ https://www.adobe.com/etc.clientlibs/globalnav/clientlibs/base/privacy-standalone.js:0
-[    2236ms] [ERROR] Failed to load privacy script PrivacyService: Failed to load the privacy script. @ https://firefly.adobe.com/:1
-[    2462ms] [ERROR] Failed to load resource: net::ERR_HTTP2_PROTOCOL_ERROR @ https://www.adobe.com/marketingtech/main.standard.min.js:0
-[    2464ms] undefined

@@ -76,20 +76,46 @@ Key variables: `BASE_URL`, `USERNAME`, `PASSWORD`
 
 ## Running Tests
 
-Run all tests:
-
+**Default (Headless)**:
+Tests run in headless mode by default.
 ```bash
 npx playwright test
 ```
 
-Run specific test file:
+**Headed Mode** (Visible Browser):
+```bash
+npx playwright test --headed
+```
 
+**Specific Browser**:
+```bash
+npx playwright test --project=chromium
+npx playwright test --project=firefox
+npx playwright test --project=webkit
+```
+
+**Run on All Browsers**:
+(Ensure all projects are uncommented in `playwright.config.ts`)
+```bash
+npx playwright test
+```
+
+**Parallel Execution**:
+By default, tests run in parallel. You can control the number of workers:
+```bash
+npx playwright test --workers=4
+```
+To run entirely sequentially (one at a time):
+```bash
+npx playwright test --workers=1
+```
+
+**Specific Test File**:
 ```bash
 npx playwright test tests/login.flow.spec.ts
 ```
 
-Run tests in UI mode:
-
+**UI Mode** (Interactive detailed view):
 ```bash
 npx playwright test --ui
 ```
