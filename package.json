@@ -5,8 +5,11 @@
   "main": "index.js",
   "scripts": {
     "test": "npx playwright test",
+    "test:ci": "CI=true npx playwright test",
     "report:allure": "allure generate ./allure-results -o ./allure-report --clean",
     "show-report:allure": "allure open ./allure-report",
+    "report:show": "npx playwright show-report",
+    "report:analytics": "node -e \"const d=require('./test-results/analytics.json');const r=d.runs[d.runs.length-1];console.log('Last run:',r.summary,'Duration:',Math.round(r.duration/1000)+'s');if(Object.keys(d.flakyTests).length)console.log('Flaky tests:',d.flakyTests)\"",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write ."
@@ -19,6 +22,7 @@
     "@eslint/eslintrc": "^3.3.3",
     "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.58.2",
+    "@types/node": "^25.2.3",
     "@typescript-eslint/eslint-plugin": "^8.56.0",
     "@typescript-eslint/parser": "^8.56.0",
     "allure-commandline": "^2.36.0",
@@ -26,6 +30,7 @@
     "dotenv": "^17.3.1",
     "eslint": "^10.0.0",
     "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-jsdoc": "^62.5.5",
     "eslint-plugin-playwright": "^2.5.1",
     "playwright": "^1.58.2",
     "prettier": "^3.8.1",
