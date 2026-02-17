@@ -2,17 +2,17 @@
 
 This project implements a scalable test automation framework using Playwright and TypeScript, following a clean architecture pattern.
 
-![Architecture Diagram](https://raw.githubusercontent.com/username/repo/main/docs/architecture.png)
-
 ## Architecture Overview
 
 The framework is structured to separate concerns and ensure maintainability:
 
 - **API Layer (`/api`)**: Handles all API interactions.
-  - `clients/`: Business-logic specific API clients.
+  - `clients/`: Business-logic specific API clients (auth, user, order).
+  - `api.types.ts`: Shared API interfaces (User, Order).
 - **UI Layer (`/ui`)**: Encapsulates UI interactions and validations.
   - `models/`: Page Object Models (POM) for interacting with UI elements.
   - `validators/`: Reusable validation logic.
+  - `ui.types.ts`: Shared UI interfaces.
 - **Tests (`/tests`)**: Contains the actual test scenarios (Business Flows).
   - Tests contain zero logic; they orchestrate the flow using API and UI layers.
 - **Fixtures (`/fixtures`)**: Playwright fixtures for test isolation and setup (e.g., authentication, browser context).
@@ -22,20 +22,31 @@ The framework is structured to separate concerns and ensure maintainability:
 
 ```
 /
-├── api/             # API clients and types
-├── ui/              # Page objects and validators
-├── tests/           # Test specifications
-├── fixtures/        # Playwright fixtures
-├── utils/           # Core utilities (config, logger)
-├── reports/         # Test reports
-├── .env.*           # Environment variables
-├── playwright.config.ts # Playwright configuration
-└── tsconfig.json    # TypeScript configuration
+├── api/                        # API clients and types
+│   ├── clients/                # auth.client.ts, user.client.ts, order.client.ts
+│   └── api.types.ts            # Shared API interfaces
+├── ui/                         # Page objects and validators
+│   ├── models/                 # Page Object Models
+│   ├── validators/             # Validation logic
+│   └── ui.types.ts             # Shared UI interfaces
+├── tests/                      # Test specifications
+├── fixtures/                   # Playwright fixtures
+│   ├── browser.fixture.ts      # Custom test/expect exports
+│   └── test.context.ts         # Test context extensions
+├── utils/                      # Core utilities
+│   ├── config.ts               # Environment config
+│   ├── logger.ts               # Logging utility
+│   └── test.context.ts         # Test helpers (ID generation)
+├── docs/                       # Documentation
+├── .env.*                      # Environment variables
+├── playwright.config.ts        # Playwright configuration
+├── tsconfig.json               # TypeScript configuration
+└── eslint.config.mjs           # ESLint flat config
 ```
 
 ## Prerequisites
 
-- Node.js (v14 or higher)
+- Node.js (v18 or higher)
 - npm
 
 ## Installation
@@ -53,26 +64,6 @@ npm install
 npx playwright install
 ```
 
-## Skills Pattern & CLI
-
-This framework includes a `skills/` directory for high-level, reusable business capabilities (e.g., "Login", "Purchase").
-
-### Installing Playwright CLI & Tools
-
-To install the Playwright CLI globally (optional, project-local is recommended):
-
-```bash
-npm install -g @playwright/cli
-```
-
-To install browser binaries and dependencies:
-
-```bash
-npx playwright install --with-deps
-```
-
-**Note regarding `playwright install --skills`**: This command is specific to certain AI agent environments and is not a standard Playwright CLI command. The `skills/` directory in this project is a structural implementation of the pattern.
-
 ## Configuration
 
 Environment variables are managed using `.env` files.
@@ -80,6 +71,8 @@ Environment variables are managed using `.env` files.
 - `.env.dev`: Development environment (default)
 - `.env.qa`: QA environment
 - `.env.prod`: Production environment
+
+Key variables: `BASE_URL`, `USERNAME`, `PASSWORD`
 
 ## Running Tests
 
@@ -99,6 +92,12 @@ Run tests in UI mode:
 
 ```bash
 npx playwright test --ui
+```
+
+List tests without running:
+
+```bash
+npx playwright test --list
 ```
 
 ## Reports
