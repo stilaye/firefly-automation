@@ -9,6 +9,13 @@ import { type EditorState } from '../ui.types';
  *
  * This page allows users to upload an image and apply AI-powered edits
  * using text prompts (instruct mode).
+ *
+ * Anti-pattern compliance (Elaichenkov's 17 Playwright Mistakes):
+ *   #2:  Web-first assertions only (toBeVisible) — NOT isVisible()
+ *   #5:  No pre-waits before fill/click — they already auto-wait
+ *   #11: { exact: true } on all getByRole / getByText locators
+ *   #14: Positive assertions — toBeHidden() not not.toBeVisible()
+ *   #16: Action methods return void — test decides what comes next
  */
 export class EditorPage {
   /** Upload area container (drag & drop zone) */
@@ -54,48 +61,68 @@ export class EditorPage {
   readonly modelPicker: Locator;
 
   constructor(private page: Page) {
-    this.uploadArea = page.locator('[data-testid="firefly-lego-editor-empty-state-upload"]');
-    this.uploadFromDeviceButton = page.locator('[data-testid="empty-state-upload-button"]');
-    this.browseCloudButton = page.locator('[data-testid="empty-state-browse-button"]');
-    this.generateButton = page.locator('[data-testid="instruct-generate-button"]');
-    this.promptButton = page.locator('[data-testid="instruct-button"]');
-    this.downloadButton = page.getByRole('button', { name: 'Download' });
-    this.shareButton = page.getByRole('button', { name: 'Share' });
-    this.newButton = page.locator('[data-testid="new-button"]');
-    this.galleryTab = page.locator('sp-tab[value="gallery"]');
-    this.generateTab = page.locator('sp-tab[value="generate"]');
-    this.editTab = page.locator('sp-tab[value="edit"]');
-    this.backButton = page.locator('[data-testid="header-navbar-back-button"]');
-    this.promptInput = page.getByLabel('Prompt');
-    this.modelPicker = page.locator('[data-testid="lego-instruct-model-picker"]');
+    // ── Priority 1: Role — accessibility tree, survives DOM refactors ───────
+    // #11: { exact: true } on all role/label locators
+    this.downloadButton = page.getByRole('button', { name: 'Download', exact: true });
+    this.shareButton = page.getByRole('button', { name: 'Share', exact: true });
+    this.generateButton = page.getByRole('button', { name: 'Generate', exact: true });
+    this.newButton = page.getByRole('button', { name: 'New', exact: true });
+    this.backButton = page.getByRole('button', { name: 'Back', exact: true });
+    this.uploadFromDeviceButton = page.getByRole('button', { name: 'Your device', exact: true });
+    this.browseCloudButton = page.getByRole('button', { name: 'Adobe cloud storage', exact: true });
+    this.promptButton = page.getByRole('button', { name: 'Prompt', exact: true });
+
+    // Adobe Spectrum <sp-tab> components expose ARIA role="tab" — use getByRole
+    this.galleryTab = page.getByRole('tab', { name: 'Gallery', exact: true });
+    this.generateTab = page.getByRole('tab', { name: 'Generate', exact: true });
+    this.editTab = page.getByRole('tab', { name: 'Edit', exact: true });
+
+    // ── Priority 2: Label — form inputs, mimics real user ───────────────────
+    this.promptInput = page.getByLabel('Prompt', { exact: true });
+
+    // ── Priority 5: TestId — FALLBACK for icon/container elements ────────────
+    // uploadArea is a drag-drop zone with no accessible name — testId required
+    this.uploadArea = page.getByTestId('firefly-lego-editor-empty-state-upload');
+    // modelPicker is a custom Spectrum component with no stable accessible name
+    this.modelPicker = page.getByTestId('lego-instruct-model-picker');
   }
 
   /** Navigate to the Edit page */
   async navigateToEditor(): Promise<void> {
     Logger.info('Navigating to Edit page');
     await this.page.goto('/generate/image?view=edit');
+    // #4: wait for visible element — NOT networkidle
     await expect(this.uploadArea.or(this.newButton)).toBeVisible();
   }
 
-  /** Check if the editor is in the empty state (no image loaded) */
-  async isEmptyState(): Promise<boolean> {
-    return this.uploadArea.isVisible().catch(() => false);
+  /**
+   * Assert that the editor is in the empty state (no image loaded).
+   *
+   * Anti-pattern #2: use web-first toBeVisible() — NOT isVisible() which does not retry.
+   */
+  async assertEmptyState(): Promise<void> {
+    await expect(this.uploadArea).toBeVisible(); // #2: web-first — retries
   }
 
   /** Upload an image from the local device using the file chooser */
   async uploadImage(filePath: string): Promise<void> {
     Logger.info(`Uploading image from: ${filePath}`);
+    // #7: listen for the event FIRST, trigger SECOND, await THIRD
     const fileChooserPromise = this.page.waitForEvent('filechooser');
     await this.uploadFromDeviceButton.click();
     const fileChooser = await fileChooserPromise;
     await fileChooser.setFiles(filePath);
   }
 
-  /** Open the instruct prompt panel and enter a prompt */
+  /**
+   * Open the instruct prompt panel and enter a prompt.
+   *
+   * Anti-pattern #5: fill() already auto-waits — no pre-wait before promptButton.click().
+   */
   async enterEditPrompt(text: string): Promise<void> {
     Logger.info(`Entering edit prompt: "${text}"`);
     await this.promptButton.click();
-    await this.promptInput.fill(text);
+    await this.promptInput.fill(text); // #5: fill auto-waits
   }
 
   /** Apply the edit by clicking Generate */
@@ -116,9 +143,14 @@ export class EditorPage {
     await this.newButton.click();
   }
 
-  /** Get the current editor state */
+  /**
+   * Get the current editor state.
+   *
+   * Note: isEnabled() is acceptable here as it reads element state for data
+   * collection, not as an assertion. Tests should use expect().toBeEnabled() instead.
+   */
   async getEditorState(): Promise<EditorState> {
-    const hasImage = !(await this.isEmptyState());
+    const hasImage = !(await this.uploadArea.isVisible().catch(() => false));
     const canDownload = await this.downloadButton.isEnabled().catch(() => false);
 
     const generateSelected = await this.generateTab.getAttribute('selected').catch(() => null);

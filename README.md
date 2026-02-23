@@ -5,6 +5,7 @@ This project implements a scalable test automation framework using Playwright an
 ## Architecture Layers
 
 ### 1. Test Layer (`/tests`)
+
 Playwright specs organized by feature in TypeScript strict mode. Tests contain zero business logic — they orchestrate flows using API clients and UI page objects.
 
 - `login.flow.spec.ts` — Authentication flow (3 tests)
@@ -13,8 +14,10 @@ Playwright specs organized by feature in TypeScript strict mode. Tests contain z
 - `projects.flow.spec.ts` — Project/file management (8 tests)
 - `checkout.flow.spec.ts` — Checkout flow
 - `user.lifecycle.spec.ts` — User lifecycle
+- `visual.regression.spec.ts` — Data-driven visual regression (reads `visual-config/visual.config.json`)
 
-### 2. Page Object Layer (`/ui/models`)
+### 2. Page Object Layer (`/ui/pages`)
+
 Encapsulated page objects with typed locators extracted from the live site.
 
 - `login.page.ts` — Adobe IMS login flow (`getByLabel('Email address')`, `getByRole('button', { name: 'Sign In' })`)
@@ -24,6 +27,7 @@ Encapsulated page objects with typed locators extracted from the live site.
 - `user.model.ts` — Generic user page
 
 ### 3. Fixture Layer (`/fixtures`)
+
 Custom Playwright fixtures for auth, test data, and feature flags.
 
 - `auth.fixture.ts` — Authenticated sessions via `auth.json` storage state (login once, reuse everywhere)
@@ -32,16 +36,18 @@ Custom Playwright fixtures for auth, test data, and feature flags.
 - `browser.fixture.ts` — Composed entry point merging all fixtures via `mergeTests()`
 
 ### 4. Utility Layer (`/utils`)
+
 Shared helpers for config, logging, API mocking, visual regression, and performance.
 
 - `config.ts` — Environment config (`BASE_URL`, `USERNAME`, `PASSWORD`, `SLACK_WEBHOOK_URL`)
 - `logger.ts` — Structured logging (info/error/warn)
 - `test.context.ts` — Test helpers (unique ID generation)
 - `api.mock.ts` — API mocking (`mockGenerationAPI()`, `mockRoute()`, `mockGenerationFailure()`)
-- `visual.helper.ts` — Visual regression (`compareScreenshot()` with `toHaveScreenshot()` + pixel threshold)
+- `visual.helper.ts` — Visual regression (`compareScreenshot()`, `compareElementScreenshot()`, `waitForPageReady()`, `getDynamicMasks()`)
 - `perf.metrics.ts` — Performance metrics (`measurePageLoad()`, `measureGenerationTime()`)
 
 ### 5. Config Layer
+
 - `playwright.config.ts` — Browser projects (Chromium, Firefox, WebKit), parallelism, retries, reporters
 - `tsconfig.json` — TypeScript strict mode, path aliases (`@api/*`, `@ui/*`, `@utils/*`, `@fixtures/*`)
 - `.env.dev` / `.env.qa` / `.env.prod` — Environment-specific variables
@@ -49,9 +55,11 @@ Shared helpers for config, logging, API mocking, visual regression, and performa
 - `.prettierrc` — Prettier (single quotes, semicolons, trailing commas, 2-space indent, 100 char width)
 
 ### 6. CI/CD Layer
+
 _Not yet implemented._ Planned: GitHub Actions / Jenkins pipelines for PR tests, nightly regression, deployment gates.
 
 ### 7. Reporting Layer
+
 Four reporters run after every test execution:
 
 - **HTML Report** — Playwright's built-in interactive report
@@ -67,21 +75,24 @@ Four reporters run after every test execution:
 │   ├── clients/                    # auth.client.ts, user.client.ts, order.client.ts
 │   └── api.types.ts                # API interfaces (User, Order, GenerationRequest, etc.)
 ├── ui/                             # UI layer
-│   ├── models/                     # Page Object Models
+│   ├── pages/                      # Page Object Models
 │   │   ├── login.page.ts           # Adobe IMS login
 │   │   ├── generate.page.ts        # Image generation
 │   │   ├── editor.page.ts          # Image editor
 │   │   ├── project.page.ts         # Your stuff / files
 │   │   └── user.model.ts           # Generic user page
 │   ├── validators/                 # Validation logic
-│   └── ui.types.ts                 # UI interfaces (GeneratedImage, EditorState, etc.)
-├── tests/                          # Test specifications (30 tests × 3 browsers = 90)
+│   └── ui.types.ts                 # UI interfaces (GeneratedImage, EditorState, VisualConfig, etc.)
+├── tests/                          # Test specifications
+│   ├── visual-config/
+│   │   └── visual.config.json      # Data-driven visual regression registry (pages, masks, flags)
 │   ├── login.flow.spec.ts
 │   ├── generation.flow.spec.ts
 │   ├── editing.flow.spec.ts
 │   ├── projects.flow.spec.ts
 │   ├── checkout.flow.spec.ts
-│   └── user.lifecycle.spec.ts
+│   ├── user.lifecycle.spec.ts
+│   └── visual.regression.spec.ts   # Hybrid visual regression (reads visual.config.json)
 ├── fixtures/                       # Playwright fixtures
 │   ├── browser.fixture.ts          # Composed entry point (import test/expect from here)
 │   ├── auth.fixture.ts             # Auth with storage state
@@ -191,6 +202,51 @@ npx playwright test --ui
 npx playwright test --list
 ```
 
+**Visual Regression Only**:
+
+```bash
+npx playwright test tests/visual.regression.spec.ts
+```
+
+## Visual Regression Testing
+
+Visual regression tests are fully data-driven. All page configuration lives in `tests/visual-config/visual.config.json` — no TypeScript changes needed to add or remove pages.
+
+### Adding a new page
+
+Edit `visual.config.json` and add an entry to `pages.smoke` or `pages.detailed`:
+
+```json
+{
+  "name": "projects-empty-state",
+  "path": "/your-stuff",
+  "active": true,
+  "maskSelectors": [
+    "[data-testid='user-avatar-account-icon']",
+    "[data-testid='credits-counter-remaining-credits']"
+  ]
+}
+```
+
+### Toggling smoke vs full coverage
+
+| Config flag           | Behaviour                                                   |
+| --------------------- | ----------------------------------------------------------- |
+| `"SMOKE_ONLY": true`  | Only `pages.smoke` entries run — fast CI gate               |
+| `"SMOKE_ONLY": false` | `pages.detailed` + `pages.smoke` both run — full regression |
+
+### Temporarily skipping a page
+
+Set `"active": false` on any entry. The page is preserved in config but skipped at runtime.
+
+### Updating baselines
+
+When a visual change is intentional, update the stored snapshots:
+
+```bash
+npx playwright test tests/visual.regression.spec.ts --update-snapshots
+```
+
 ## Reports
 
 ### HTML Report
@@ -211,6 +267,7 @@ Includes custom categories (failures, timeouts, flaky, skipped) and environment 
 ### Slack Alerts
 
 Set `SLACK_WEBHOOK_URL` in your `.env` file to receive test summaries in Slack after each run. The message includes:
+
 - Pass/fail/skipped/flaky counts
 - Total duration
 - Failed test details with file names and error messages
@@ -225,6 +282,7 @@ npm run report:analytics
 ```
 
 Analytics data is stored in `test-results/analytics.json` and tracks:
+
 - Per-test pass/fail/duration history
 - Flaky test frequency (tests that pass on retry)
 - Slowest test trends (rolling average)
@@ -235,7 +293,7 @@ Analytics data is stored in `test-results/analytics.json` and tracks:
 
 - **AI Output Testing**: Mock generation API for deterministic tests; separate smoke tests for non-deterministic with broad assertions
 - **Parallelism**: Playwright `fullyParallel: true` locally, sequential on CI with browser contexts for isolation
-- **Visual Regression**: `toHaveScreenshot()` with pixel threshold via `utils/visual.helper.ts`
+- **Visual Regression**: Hybrid data-driven approach — pages are registered in `tests/visual-config/visual.config.json` (add new pages without touching TypeScript), and `visual.regression.spec.ts` runs them using `authenticatedPage` (no login flakiness), `waitForPageReady()` (event-driven, not `waitForTimeout`), per-page `maskSelectors` for dynamic content, and a 2% pixel threshold. Toggle `SMOKE_ONLY` in the config to switch between fast CI smoke runs and full detailed coverage.
 
 ## Development Workflow
 

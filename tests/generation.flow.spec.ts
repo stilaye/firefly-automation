@@ -1,5 +1,5 @@
 import { test, expect } from '../fixtures/browser.fixture';
-import { GeneratePage } from '../ui/models/generate.page';
+import { GeneratePage } from '../ui/pages/generate.page';
 import { mockGenerationAPI, mockGenerationFailure, clearMocks } from '../utils/api.mock';
 import { compareScreenshot, getDynamicMasks } from '../utils/visual.helper';
 import { measurePageLoad } from '../utils/perf.metrics';
@@ -17,7 +17,7 @@ test.describe('Generation Flow', () => {
     await expect(generatePage.generateButton).toBeVisible();
     await expect(generatePage.emptyStateHeading).toBeVisible();
     await expect(generatePage.settingsPanel).toBeVisible();
-    expect(await generatePage.isEmptyState()).toBe(true);
+    await generatePage.assertEmptyState(); // #2: web-first — retries via toBeVisible()
   });
 
   test('should allow entering a prompt', async () => {

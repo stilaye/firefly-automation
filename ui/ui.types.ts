@@ -48,3 +48,41 @@ export type AspectRatio =
   | 'Square (1:1)'
   | 'Widescreen (16:9)'
   | string;
+
+// ─── Visual Regression Config ────────────────────────────────────────────────
+
+/**
+ * Configuration for a single page in the visual regression suite.
+ *
+ * Defined in `tests/visual-config/visual.config.json`.
+ * Add new pages to that file without changing any TypeScript.
+ */
+export interface VisualPageConfig {
+  /** Unique name for the screenshot baseline (e.g. 'generate-page-empty') */
+  name: string;
+  /** Relative path to navigate to (e.g. '/generate') */
+  path: string;
+  /** Set to false to skip this page without removing it from config */
+  active: boolean;
+  /** data-testid selectors for dynamic content to mask before comparison */
+  maskSelectors?: string[];
+}
+
+/**
+ * Top-level shape of `tests/visual-config/visual.config.json`.
+ *
+ * - SMOKE_ONLY: true  → only `pages.smoke` entries run
+ * - SMOKE_ONLY: false → `pages.detailed` + `pages.smoke` both run
+ */
+export interface VisualConfig {
+  /** When true, only smoke pages are tested (fast CI gate) */
+  SMOKE_ONLY: boolean;
+  /** Max pixel difference ratio applied to all pages (overridable per page) */
+  MAX_DIFF_PIXEL_RATIO: number;
+  pages: {
+    /** Critical pages always included in every run */
+    smoke: VisualPageConfig[];
+    /** Extended coverage pages included when SMOKE_ONLY is false */
+    detailed: VisualPageConfig[];
+  };
+}

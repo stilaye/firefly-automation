@@ -89,7 +89,7 @@ npm run format
 - Each client is a class that takes `APIRequestContext` in the constructor
 - Encapsulate all HTTP interactions here
 
-### Page Objects (`ui/models/`)
+### Page Objects (`ui/pages/`)
 
 - File naming: `<page>.model.ts` or `<page>.page.ts`
 - Each POM is a class that takes Playwright `Page` in the constructor
