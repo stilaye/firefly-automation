@@ -1,5 +1,5 @@
 import { test, expect } from '../fixtures/browser.fixture';
-import { EditorPage } from '../ui/models/editor.page';
+import { EditorPage } from '../ui/pages/editor.page';
 import { compareScreenshot, getDynamicMasks } from '../utils/visual.helper';
 
 test.describe('Editing Flow', () => {
@@ -14,7 +14,7 @@ test.describe('Editing Flow', () => {
     await expect(editorPage.uploadArea).toBeVisible();
     await expect(editorPage.uploadFromDeviceButton).toBeVisible();
     await expect(editorPage.browseCloudButton).toBeVisible();
-    expect(await editorPage.isEmptyState()).toBe(true);
+    await editorPage.assertEmptyState(); // #2: web-first — retries via toBeVisible()
   });
 
   test('should show Gallery, Generate, and Edit tabs', async () => {

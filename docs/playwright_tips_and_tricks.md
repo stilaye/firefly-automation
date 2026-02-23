@@ -40,7 +40,7 @@ This guide outlines best practices for using Playwright tools to build and maint
 3.  **Extract Locators**: Look at the generated code to find the best locators.
 4.  **Implement in POM**:
     - Take the locator (e.g., `getByRole('button', { name: 'Generate' })`).
-    - Add it to the relevant Page Object (e.g., `ui/models/generation.page.ts`).
+    - Add it to the relevant Page Object (e.g., `ui/pages/generation.page.ts`).
     - Create a method (e.g., `async clickGenerate()`).
 
 **Example Refactoring**:
@@ -52,7 +52,7 @@ await page.getByRole('button', { name: 'Sign In' }).click();
 await page.getByLabel('Email address').fill('test@adobe.com');
 ```
 
-_Refactored to POM (`ui/models/login.page.ts`)_:
+_Refactored to POM (`ui/pages/login.page.ts`)_:
 
 ```typescript
 export class LoginPage {
@@ -104,15 +104,13 @@ Useful for sharing the current page state with the team or attaching to a bug re
 Since Firefly requires Adobe ID login:
 
 1.  **Avoid UI Login in Every Test**: It's slow and flaky.
-2.  **Use `auth.json` Storage State**:
-    - Login _once_ in a `global-setup` or a specific auth spec.
-    - Save the state: `await context.storageState({ path: 'auth.json' });` \* Load it in `playwright.config.ts`:
-      `typescript
+2.  **Use `auth.json` Storage State**: - Login _once_ in a `global-setup` or a specific auth spec. - Save the state: `await context.storageState({ path: 'auth.json' });` \* Load it in `playwright.config.ts`:
+    `typescript
 use: {
   storageState: 'auth.json',
 }
 `
-      This is already partially set up in your `api/clients/auth.client.ts` and `fixtures/`.
+    This is already partially set up in your `api/clients/auth.client.ts` and `fixtures/`.
 
 ---
 

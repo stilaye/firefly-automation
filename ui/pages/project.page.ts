@@ -9,6 +9,12 @@ import { type FireflyProject } from '../ui.types';
  *
  * This page shows the user's files, shared content, projects,
  * favorites, generation history, and deleted items.
+ *
+ * Anti-pattern compliance (Elaichenkov's 17 Playwright Mistakes):
+ *   #2:  Web-first assertions only (toBeVisible) — NOT isVisible()
+ *   #5:  No pre-waits before fill/click — they already auto-wait
+ *   #11: { exact: true } on all getByRole / getByText locators
+ *   #16: Action methods return void — test decides what comes next
  */
 export class ProjectPage {
   /** Main files container */
@@ -54,30 +60,38 @@ export class ProjectPage {
   readonly pageHeading: Locator;
 
   constructor(private page: Page) {
-    this.filesContainer = page.locator('[data-testid="your-files-files-container"]');
-    this.createFolderButton = page.locator('[data-testid="cloud-documents-create-folder-button"]');
-    this.searchField = page.locator('[data-testid="cloud-documents-search-field"]');
-    this.sortButton = page.locator('[data-testid="cloud-documents-sort-button"]');
-    this.viewToggle = page.locator('[data-testid="cloud-documents-view-toggle"]');
-    this.filesGrid = page.locator('[data-testid="cloud-documents-grid"]');
-    this.navTabs = page.locator('[data-testid="files-left-nav-tab"]');
+    // ── Priority 1: Role — accessibility tree, survives DOM refactors ───────
+    // #11: { exact: true } on all getByRole locators
+    this.createFolderButton = page.getByRole('button', { name: 'Create folder', exact: true });
+    this.sortButton = page.getByRole('button', { name: 'Sort', exact: true });
+    this.pageHeading = page.getByRole('heading').first();
 
-    // Left nav links — using nth-child since labels are inside shadow DOM
+    // ── Priority 4: Placeholder — inputs without a visible label ───────────
+    // searchbox role targets <input type="search"> or role="searchbox" directly
+    this.searchField = page.getByRole('searchbox');
+
+    // ── Priority 5: TestId — FALLBACK for containers and shadow DOM nav ──────
+    // filesContainer and filesGrid are layout wrappers with no accessible name
+    this.filesContainer = page.getByTestId('your-files-files-container');
+    this.viewToggle = page.getByTestId('cloud-documents-view-toggle');
+    this.filesGrid = page.getByTestId('cloud-documents-grid');
+
+    // Left nav tabs are inside Adobe Spectrum shadow DOM — nth() via testId
+    // is the only reliable strategy here without accessible labels exposed
+    this.navTabs = page.getByTestId('files-left-nav-tab');
     this.yourFilesLink = this.navTabs.nth(0);
     this.sharedWithYouLink = this.navTabs.nth(1);
     this.projectsLink = this.navTabs.nth(2);
     this.favoritesLink = this.navTabs.nth(3);
     this.generationHistoryLink = this.navTabs.nth(4);
     this.deletedLink = this.navTabs.nth(5);
-
-    this.pageHeading = page.getByRole('heading').first();
   }
 
   /** Navigate to the "Your stuff" page */
   async navigateToYourStuff(): Promise<void> {
     Logger.info('Navigating to Your stuff page');
     await this.page.goto('/your-stuff');
-    await expect(this.filesContainer).toBeVisible();
+    await expect(this.filesContainer).toBeVisible(); // #2: web-first
   }
 
   /** Navigate to the Projects section */
@@ -104,26 +118,39 @@ export class ProjectPage {
     await this.deletedLink.click();
   }
 
-  /** Create a new folder */
+  /**
+   * Create a new folder.
+   *
+   * Anti-pattern #11: { exact: true } used on "Create" button.
+   */
   async createFolder(name: string): Promise<void> {
     Logger.info(`Creating folder: ${name}`);
     await this.createFolderButton.click();
-    // Folder creation dialog — type the name and confirm
+    // Folder creation dialog — fill name and confirm
     await this.page.getByRole('textbox').last().fill(name);
-    await this.page.getByRole('button', { name: 'Create' }).click();
+    // #11: exact: true prevents matching "Create folder" instead of "Create"
+    await this.page.getByRole('button', { name: 'Create', exact: true }).click();
   }
 
-  /** Search for files by keyword */
+  /**
+   * Search for files by keyword.
+   *
+   * Anti-pattern #5: fill() already auto-waits — the redundant pre-click removed.
+   */
   async searchFiles(keyword: string): Promise<void> {
     Logger.info(`Searching for: ${keyword}`);
-    await this.searchField.click();
-    await this.searchField.fill(keyword);
+    await this.searchField.fill(keyword); // #5: fill auto-waits — no pre-click needed
     await this.page.keyboard.press('Enter');
   }
 
-  /** Get the list of visible file/project items */
+  /**
+   * Get the list of visible file/project items.
+   *
+   * Selector hierarchy: testId only — CSS class fallback (.cloud-doc-card) removed.
+   */
   async getProjectList(): Promise<FireflyProject[]> {
-    const items = this.filesGrid.locator('[role="gridcell"], .cloud-doc-card');
+    // testId selector only — no CSS class fallback
+    const items = this.filesGrid.locator('[role="gridcell"]');
     const count = await items.count();
     const projects: FireflyProject[] = [];
     for (let i = 0; i < count; i++) {
@@ -142,12 +169,16 @@ export class ProjectPage {
     return (await this.pageHeading.textContent()) ?? '';
   }
 
-  /** Check if the files grid is empty */
-  async isEmpty(): Promise<boolean> {
-    const count = await this.filesGrid
-      .locator('[role="gridcell"], .cloud-doc-card')
+  /**
+   * Assert whether the files grid is empty.
+   *
+   * Anti-pattern #2: expose as assertion not boolean — use toBeEmpty / count check
+   * via expect in tests. This helper returns count for test-side assertions.
+   */
+  async getProjectCount(): Promise<number> {
+    return this.filesGrid
+      .locator('[role="gridcell"]') // testId-only — no CSS class fallback
       .count()
       .catch(() => 0);
-    return count === 0;
   }
 }

@@ -1,0 +1,28 @@
+{
+  "SMOKE_ONLY": true,
+  "MAX_DIFF_PIXEL_RATIO": 0.02,
+  "pages": {
+    "smoke": [
+      {
+        "name": "generate-page-empty",
+        "path": "/generate",
+        "active": true,
+        "maskSelectors": [
+          "[data-testid='user-avatar-account-icon']",
+          "[data-testid='credits-counter-remaining-credits']",
+          "[data-testid='generation-cost-indicator-button']"
+        ]
+      },
+      {
+        "name": "editor-empty-state",
+        "path": "/editor",
+        "active": true,
+        "maskSelectors": [
+          "[data-testid='user-avatar-account-icon']",
+          "[data-testid='credits-counter-remaining-credits']"
+        ]
+      }
+    ],
+    "detailed": []
+  }
+}

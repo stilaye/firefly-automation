@@ -1,5 +1,5 @@
 import { test, expect } from '../fixtures/browser.fixture';
-import { LoginPage } from '../ui/models/login.page';
+import { LoginPage } from '../ui/pages/login.page';
 import { Config } from '../utils/config';
 
 test.describe('Login Flow', () => {
@@ -10,7 +10,7 @@ test.describe('Login Flow', () => {
     // Verify the user is signed in and the homepage loads
     await expect(loginPage.welcomeHeading).toBeVisible();
     await expect(loginPage.fireflyLogo).toBeVisible();
-    expect(await loginPage.isSignedIn()).toBe(true);
+    await loginPage.assertSignedIn(); // #2: web-first — retries via toBeVisible()
   });
 
   test('should show user avatar when signed in', async ({ authenticatedPage }) => {

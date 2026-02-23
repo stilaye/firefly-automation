@@ -81,6 +81,23 @@ export async function compareElementScreenshot(
 }
 
 /**
+ * Wait for the page to be fully loaded before taking a screenshot.
+ *
+ * Replaces hard `waitForTimeout()` waits with event-driven readiness checks,
+ * ensuring tests only proceed once the page is genuinely stable.
+ *
+ * Uses `domcontentloaded` + `load` rather than `networkidle` to stay
+ * aligned with Playwright best practices (networkidle is discouraged
+ * due to its fragility with long-polling / WebSocket traffic).
+ *
+ * @param page - Playwright page instance
+ */
+export async function waitForPageReady(page: Page): Promise<void> {
+  await page.waitForLoadState('domcontentloaded');
+  await page.waitForLoadState('load');
+}
+
+/**
  * Mask dynamic areas of the page before visual comparison.
  *
  * Firefly pages contain dynamic elements (user avatar, credit counters,

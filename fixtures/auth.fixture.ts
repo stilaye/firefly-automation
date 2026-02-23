@@ -1,7 +1,7 @@
 import { test as base, type Page, type BrowserContext } from '@playwright/test';
 import { Config } from '../utils/config';
 import { Logger } from '../utils/logger';
-import { LoginPage } from '../ui/models/login.page';
+import { LoginPage } from '../ui/pages/login.page';
 import * as fs from 'fs';
 import * as path from 'path';
 

@@ -1,5 +1,5 @@
 import { test, expect } from '../fixtures/browser.fixture';
-import { ProjectPage } from '../ui/models/project.page';
+import { ProjectPage } from '../ui/pages/project.page';
 
 test.describe('Projects Flow', () => {
   let projectPage: ProjectPage;

@@ -9,6 +9,13 @@ import { type GeneratedImage } from '../ui.types';
  *
  * This page allows users to enter a text prompt and generate AI images
  * using various models and settings.
+ *
+ * Anti-pattern compliance (Elaichenkov's 17 Playwright Mistakes):
+ *   #2:  Web-first assertions only (toBeVisible) — NOT isVisible()
+ *   #5:  No pre-waits before fill/click — they already auto-wait
+ *   #11: { exact: true } on all getByRole / getByText locators
+ *   #14: Positive assertions — toBeHidden() not not.toBeVisible()
+ *   #16: Action methods return void — test decides what comes next
  */
 export class GeneratePage {
   /** Prompt textarea where the user describes the image to generate */
@@ -48,34 +55,48 @@ export class GeneratePage {
   readonly backButton: Locator;
 
   constructor(private page: Page) {
-    this.promptInput = page.getByLabel('Prompt');
-    this.generateButton = page.locator('[data-testid="generate-image-generate-button"]');
-    this.modelPicker = page.locator('[data-testid="firefly-picker-model"]');
-    this.aspectRatioPicker = page.locator('[data-testid="aspect-ratio-picker"]');
-    this.settingsPanel = page.locator('[data-testid="firefly-image-settings-panel-sidebar"]');
-    this.referenceImageUpload = page.locator('[data-testid="upload-placeholder-button"]');
-    this.emptyState = page.locator('[data-testid="empty-state-container"]');
+    // ── Priority 1: Role — accessibility tree, survives DOM refactors ───────
+    // #11: { exact: true } on all role/label locators
+    this.generateButton = page.getByRole('button', { name: 'Generate', exact: true });
+    this.backButton = page.getByRole('button', { name: 'Back', exact: true });
     this.emptyStateHeading = page.getByRole('heading', {
       name: 'Start generating images',
+      exact: true,
     });
-    this.galleryTab = page.locator('sp-tab[value="gallery"]');
-    this.generateTab = page.locator('sp-tab[value="generate"]');
-    this.editTab = page.locator('sp-tab[value="edit"]');
-    this.backButton = page.locator('[data-testid="header-navbar-back-button"]');
+
+    // Adobe Spectrum <sp-tab> components expose ARIA role="tab" — use getByRole
+    this.galleryTab = page.getByRole('tab', { name: 'Gallery', exact: true });
+    this.generateTab = page.getByRole('tab', { name: 'Generate', exact: true });
+    this.editTab = page.getByRole('tab', { name: 'Edit', exact: true });
+
+    // ── Priority 2: Label — form inputs, mimics real user ───────────────────
+    this.promptInput = page.getByLabel('Prompt', { exact: true });
+
+    // ── Priority 5: TestId — FALLBACK for custom Spectrum components ─────────
+    // ModelPicker, AspectRatio, ReferenceUpload are Adobe Spectrum custom
+    // components with no stable accessible name — testId is the correct choice.
+    this.modelPicker = page.getByTestId('firefly-picker-model');
+    this.aspectRatioPicker = page.getByTestId('aspect-ratio-picker');
+    this.settingsPanel = page.getByTestId('firefly-image-settings-panel-sidebar');
+    this.referenceImageUpload = page.getByTestId('upload-placeholder-button');
+    this.emptyState = page.getByTestId('empty-state-container');
   }
 
   /** Navigate to the Generate Image page */
   async navigateToGenerate(): Promise<void> {
     Logger.info('Navigating to Generate Image page');
     await this.page.goto('/generate/image');
-    await expect(this.promptInput).toBeVisible();
+    await expect(this.promptInput).toBeVisible(); // #2: web-first — retries until timeout
   }
 
-  /** Enter a text prompt for image generation */
+  /**
+   * Enter a text prompt for image generation.
+   *
+   * Anti-pattern #5: fill() already auto-waits — the pre-click has been removed.
+   */
   async enterPrompt(text: string): Promise<void> {
     Logger.info(`Entering prompt: "${text}"`);
-    await this.promptInput.click();
-    await this.promptInput.fill(text);
+    await this.promptInput.fill(text); // #5: fill auto-waits — no pre-click needed
   }
 
   /** Click the Generate button to start generation */
@@ -87,17 +108,16 @@ export class GeneratePage {
   /** Wait for generation results to appear (images loaded) */
   async waitForResults(timeout = 60000): Promise<void> {
     Logger.info('Waiting for generation results');
-    await expect(this.emptyState).not.toBeVisible({ timeout });
-    // Wait for at least one generated image to appear in the results area
-    await this.page
-      .locator('[data-testid="generated-image"], .result-image, img[src*="firefly"]')
-      .first()
-      .waitFor({ state: 'visible', timeout });
+    // #14: toBeHidden() (positive) instead of not.toBeVisible() (negative)
+    await expect(this.emptyState).toBeHidden({ timeout });
+    // Selector hierarchy: testId only — no fragile CSS class fallback
+    await this.page.getByTestId('generated-image').first().waitFor({ state: 'visible', timeout });
   }
 
   /** Get all generated image elements from the results area */
   async getGeneratedImages(): Promise<GeneratedImage[]> {
-    const images = this.page.locator('[data-testid="generated-image"], .result-image img');
+    // Selector hierarchy: testId — no CSS class fallback (.result-image removed)
+    const images = this.page.getByTestId('generated-image');
     const count = await images.count();
     const results: GeneratedImage[] = [];
     for (let i = 0; i < count; i++) {
@@ -115,8 +135,9 @@ export class GeneratePage {
   async selectModel(modelName: string): Promise<void> {
     Logger.info(`Selecting model: ${modelName}`);
     await this.modelPicker.click();
+    // #11: exact: true prevents partial model name matches
     await this.page
-      .getByRole('option', { name: modelName })
+      .getByRole('option', { name: modelName, exact: true })
       .or(this.page.locator(`sp-menu-item:has-text("${modelName}")`))
       .click();
   }
@@ -125,15 +146,20 @@ export class GeneratePage {
   async selectAspectRatio(ratio: string): Promise<void> {
     Logger.info(`Selecting aspect ratio: ${ratio}`);
     await this.aspectRatioPicker.click();
+    // #11: exact: true prevents partial ratio name matches
     await this.page
-      .getByRole('option', { name: ratio })
+      .getByRole('option', { name: ratio, exact: true })
       .or(this.page.locator(`sp-menu-item:has-text("${ratio}")`))
       .click();
   }
 
-  /** Check if the empty state is visible (no generation yet) */
-  async isEmptyState(): Promise<boolean> {
-    return this.emptyStateHeading.isVisible().catch(() => false);
+  /**
+   * Assert that the page is in the empty state (no generation yet).
+   *
+   * Anti-pattern #2: use web-first toBeVisible() — NOT isVisible() which does not retry.
+   */
+  async assertEmptyState(): Promise<void> {
+    await expect(this.emptyStateHeading).toBeVisible(); // #2: web-first — retries
   }
 
   /** Navigate to the Gallery tab */
