@@ -1,4 +1,7 @@
 import { expect, type Locator, type Page } from '@playwright/test';
+import { BasePage } from './base.page';
+import { NavigationComponent } from '../components/navigation.component';
+import { SettingsComponent } from '../components/settings.component';
 import { Logger } from '../../utils/logger';
 import { type GeneratedImage } from '../ui.types';
 
@@ -7,8 +10,8 @@ import { type GeneratedImage } from '../ui.types';
  *
  * URL: https://firefly.adobe.com/generate/image
  *
- * This page allows users to enter a text prompt and generate AI images
- * using various models and settings.
+ * Composes NavigationComponent and SettingsComponent for reusable
+ * tab navigation and model/aspect-ratio selection.
  *
  * Anti-pattern compliance (Elaichenkov's 17 Playwright Mistakes):
  *   #2:  Web-first assertions only (toBeVisible) — NOT isVisible()
@@ -17,24 +20,18 @@ import { type GeneratedImage } from '../ui.types';
  *   #14: Positive assertions — toBeHidden() not not.toBeVisible()
  *   #16: Action methods return void — test decides what comes next
  */
-export class GeneratePage {
+export class GeneratePage extends BasePage {
+  /** Shared navigation tabs (Gallery / Generate / Edit) */
+  readonly navigation: NavigationComponent;
+
+  /** Shared settings panel (model picker, aspect ratio, etc.) */
+  readonly settings: SettingsComponent;
+
   /** Prompt textarea where the user describes the image to generate */
   readonly promptInput: Locator;
 
   /** Generate button to start image generation */
   readonly generateButton: Locator;
-
-  /** Model picker dropdown (e.g., Firefly Image 5, Gemini 2.5) */
-  readonly modelPicker: Locator;
-
-  /** Aspect ratio picker dropdown */
-  readonly aspectRatioPicker: Locator;
-
-  /** Settings panel sidebar on the left */
-  readonly settingsPanel: Locator;
-
-  /** Reference image upload button */
-  readonly referenceImageUpload: Locator;
 
   /** Empty state container shown before first generation */
   readonly emptyState: Locator;
@@ -42,51 +39,73 @@ export class GeneratePage {
   /** "Start generating images" heading in the empty state */
   readonly emptyStateHeading: Locator;
 
-  /** Gallery tab in the top navigation */
-  readonly galleryTab: Locator;
+  /**
+   *
+   */
+  constructor(page: Page) {
+    super(page);
+    this.navigation = new NavigationComponent(page);
+    this.settings = new SettingsComponent(page);
 
-  /** Generate tab in the top navigation */
-  readonly generateTab: Locator;
-
-  /** Edit tab in the top navigation */
-  readonly editTab: Locator;
-
-  /** Back button in the header */
-  readonly backButton: Locator;
-
-  constructor(private page: Page) {
     // ── Priority 1: Role — accessibility tree, survives DOM refactors ───────
     // #11: { exact: true } on all role/label locators
     this.generateButton = page.getByRole('button', { name: 'Generate', exact: true });
-    this.backButton = page.getByRole('button', { name: 'Back', exact: true });
     this.emptyStateHeading = page.getByRole('heading', {
       name: 'Start generating images',
       exact: true,
     });
 
-    // Adobe Spectrum <sp-tab> components expose ARIA role="tab" — use getByRole
-    this.galleryTab = page.getByRole('tab', { name: 'Gallery', exact: true });
-    this.generateTab = page.getByRole('tab', { name: 'Generate', exact: true });
-    this.editTab = page.getByRole('tab', { name: 'Edit', exact: true });
-
     // ── Priority 2: Label — form inputs, mimics real user ───────────────────
     this.promptInput = page.getByLabel('Prompt', { exact: true });
 
     // ── Priority 5: TestId — FALLBACK for custom Spectrum components ─────────
-    // ModelPicker, AspectRatio, ReferenceUpload are Adobe Spectrum custom
-    // components with no stable accessible name — testId is the correct choice.
-    this.modelPicker = page.getByTestId('firefly-picker-model');
-    this.aspectRatioPicker = page.getByTestId('aspect-ratio-picker');
-    this.settingsPanel = page.getByTestId('firefly-image-settings-panel-sidebar');
-    this.referenceImageUpload = page.getByTestId('upload-placeholder-button');
     this.emptyState = page.getByTestId('empty-state-container');
+  }
+
+  // ── Proxy getters for backward compatibility with existing tests ──────────
+  /** Gallery tab in the top navigation */
+  get galleryTab(): Locator {
+    return this.navigation.galleryTab;
+  }
+
+  /** Generate tab in the top navigation */
+  get generateTab(): Locator {
+    return this.navigation.generateTab;
+  }
+
+  /** Edit tab in the top navigation */
+  get editTab(): Locator {
+    return this.navigation.editTab;
+  }
+
+  /** Back button in the header */
+  get backButton(): Locator {
+    return this.navigation.backButton;
+  }
+
+  /** Model picker dropdown */
+  get modelPicker(): Locator {
+    return this.settings.modelPicker;
+  }
+
+  /** Aspect ratio picker dropdown */
+  get aspectRatioPicker(): Locator {
+    return this.settings.aspectRatioPicker;
+  }
+
+  /** Settings panel sidebar */
+  get settingsPanel(): Locator {
+    return this.settings.settingsPanel;
+  }
+
+  /** Reference image upload button */
+  get referenceImageUpload(): Locator {
+    return this.settings.referenceImageUpload;
   }
 
   /** Navigate to the Generate Image page */
   async navigateToGenerate(): Promise<void> {
-    Logger.info('Navigating to Generate Image page');
-    await this.page.goto('/generate/image');
-    await expect(this.promptInput).toBeVisible(); // #2: web-first — retries until timeout
+    await this.goto('/generate/image', this.promptInput);
   }
 
   /**
@@ -133,24 +152,12 @@ export class GeneratePage {
 
   /** Select a model from the model picker dropdown */
   async selectModel(modelName: string): Promise<void> {
-    Logger.info(`Selecting model: ${modelName}`);
-    await this.modelPicker.click();
-    // #11: exact: true prevents partial model name matches
-    await this.page
-      .getByRole('option', { name: modelName, exact: true })
-      .or(this.page.locator(`sp-menu-item:has-text("${modelName}")`))
-      .click();
+    await this.settings.selectModel(modelName);
   }
 
   /** Select an aspect ratio from the picker */
   async selectAspectRatio(ratio: string): Promise<void> {
-    Logger.info(`Selecting aspect ratio: ${ratio}`);
-    await this.aspectRatioPicker.click();
-    // #11: exact: true prevents partial ratio name matches
-    await this.page
-      .getByRole('option', { name: ratio, exact: true })
-      .or(this.page.locator(`sp-menu-item:has-text("${ratio}")`))
-      .click();
+    await this.settings.selectAspectRatio(ratio);
   }
 
   /**
@@ -164,16 +171,16 @@ export class GeneratePage {
 
   /** Navigate to the Gallery tab */
   async goToGallery(): Promise<void> {
-    await this.galleryTab.click();
+    await this.navigation.goToGallery();
   }
 
   /** Navigate to the Edit tab */
   async goToEdit(): Promise<void> {
-    await this.editTab.click();
+    await this.navigation.goToEdit();
   }
 
   /** Go back to the Firefly homepage */
   async goBack(): Promise<void> {
-    await this.backButton.click();
+    await this.navigation.goBack();
   }
 }

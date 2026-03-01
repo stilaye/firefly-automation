@@ -1,9 +1,19 @@
-import { APIRequestContext } from '@playwright/test';
+import type { APIRequestContext } from '@playwright/test';
 
+/**
+ *
+ */
 export class AuthClient {
+  /**
+   *
+   */
   constructor(private request: APIRequestContext) {}
 
-  async login(user: any) {
+  /**
+   *
+   */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  async login(_user: any) {
     // Implementation for login
   }
 }

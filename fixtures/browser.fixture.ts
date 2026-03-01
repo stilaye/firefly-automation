@@ -2,6 +2,7 @@ import { mergeTests } from '@playwright/test';
 import { authTest } from './auth.fixture';
 import { dataTest } from './data.fixture';
 import { featureFlagTest } from './feature.flag.fixture';
+import { screenshotTest } from './screenshot.fixture';
 
 /**
  * Composed test fixture that merges all custom fixtures.
@@ -15,8 +16,9 @@ import { featureFlagTest } from './feature.flag.fixture';
  * - testData: Test data context with automatic cleanup
  * - apiContext: API request context for data setup
  * - featureFlags: Feature flag management
+ * - screenshotOnFailure: Auto-captures screenshot on test failure (auto-fixture)
  */
-export const test = mergeTests(authTest, dataTest, featureFlagTest);
+export const test = mergeTests(authTest, dataTest, featureFlagTest, screenshotTest);
 
 export { expect } from '@playwright/test';
 
