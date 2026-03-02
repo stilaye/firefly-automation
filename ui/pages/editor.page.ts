@@ -1,4 +1,6 @@
 import { expect, type Locator, type Page } from '@playwright/test';
+import { BasePage } from './base.page';
+import { NavigationComponent } from '../components/navigation.component';
 import { Logger } from '../../utils/logger';
 import { type EditorState } from '../ui.types';
 
@@ -7,8 +9,7 @@ import { type EditorState } from '../ui.types';
  *
  * URL: https://firefly.adobe.com/generate/image?view=edit
  *
- * This page allows users to upload an image and apply AI-powered edits
- * using text prompts (instruct mode).
+ * Composes NavigationComponent for reusable tab navigation.
  *
  * Anti-pattern compliance (Elaichenkov's 17 Playwright Mistakes):
  *   #2:  Web-first assertions only (toBeVisible) — NOT isVisible()
@@ -17,7 +18,10 @@ import { type EditorState } from '../ui.types';
  *   #14: Positive assertions — toBeHidden() not not.toBeVisible()
  *   #16: Action methods return void — test decides what comes next
  */
-export class EditorPage {
+export class EditorPage extends BasePage {
+  /** Shared navigation tabs (Gallery / Generate / Edit) */
+  readonly navigation: NavigationComponent;
+
   /** Upload area container (drag & drop zone) */
   readonly uploadArea: Locator;
 
@@ -42,40 +46,31 @@ export class EditorPage {
   /** "New" button to start a fresh edit */
   readonly newButton: Locator;
 
-  /** Gallery tab */
-  readonly galleryTab: Locator;
-
-  /** Generate tab */
-  readonly generateTab: Locator;
-
-  /** Edit tab */
-  readonly editTab: Locator;
-
-  /** Back button in the header */
-  readonly backButton: Locator;
-
   /** The instruct prompt textarea (visible after opening prompt panel) */
   readonly promptInput: Locator;
 
   /** Model picker for the editor */
   readonly modelPicker: Locator;
 
-  constructor(private page: Page) {
+  /**
+   *
+   */
+  constructor(page: Page) {
+    super(page);
+    this.navigation = new NavigationComponent(page);
+
     // ── Priority 1: Role — accessibility tree, survives DOM refactors ───────
     // #11: { exact: true } on all role/label locators
     this.downloadButton = page.getByRole('button', { name: 'Download', exact: true });
     this.shareButton = page.getByRole('button', { name: 'Share', exact: true });
     this.generateButton = page.getByRole('button', { name: 'Generate', exact: true });
     this.newButton = page.getByRole('button', { name: 'New', exact: true });
-    this.backButton = page.getByRole('button', { name: 'Back', exact: true });
     this.uploadFromDeviceButton = page.getByRole('button', { name: 'Your device', exact: true });
-    this.browseCloudButton = page.getByRole('button', { name: 'Adobe cloud storage', exact: true });
+    this.browseCloudButton = page.getByRole('button', {
+      name: 'Adobe cloud storage',
+      exact: true,
+    });
     this.promptButton = page.getByRole('button', { name: 'Prompt', exact: true });
-
-    // Adobe Spectrum <sp-tab> components expose ARIA role="tab" — use getByRole
-    this.galleryTab = page.getByRole('tab', { name: 'Gallery', exact: true });
-    this.generateTab = page.getByRole('tab', { name: 'Generate', exact: true });
-    this.editTab = page.getByRole('tab', { name: 'Edit', exact: true });
 
     // ── Priority 2: Label — form inputs, mimics real user ───────────────────
     this.promptInput = page.getByLabel('Prompt', { exact: true });
@@ -87,12 +82,30 @@ export class EditorPage {
     this.modelPicker = page.getByTestId('lego-instruct-model-picker');
   }
 
+  // ── Proxy getters for backward compatibility with existing tests ──────────
+  /** Gallery tab */
+  get galleryTab(): Locator {
+    return this.navigation.galleryTab;
+  }
+
+  /** Generate tab */
+  get generateTab(): Locator {
+    return this.navigation.generateTab;
+  }
+
+  /** Edit tab */
+  get editTab(): Locator {
+    return this.navigation.editTab;
+  }
+
+  /** Back button in the header */
+  get backButton(): Locator {
+    return this.navigation.backButton;
+  }
+
   /** Navigate to the Edit page */
   async navigateToEditor(): Promise<void> {
-    Logger.info('Navigating to Edit page');
-    await this.page.goto('/generate/image?view=edit');
-    // #4: wait for visible element — NOT networkidle
-    await expect(this.uploadArea.or(this.newButton)).toBeVisible();
+    await this.goto('/generate/image?view=edit', this.uploadArea.or(this.newButton));
   }
 
   /**
@@ -153,8 +166,12 @@ export class EditorPage {
     const hasImage = !(await this.uploadArea.isVisible().catch(() => false));
     const canDownload = await this.downloadButton.isEnabled().catch(() => false);
 
-    const generateSelected = await this.generateTab.getAttribute('selected').catch(() => null);
-    const gallerySelected = await this.galleryTab.getAttribute('selected').catch(() => null);
+    const generateSelected = await this.navigation.generateTab
+      .getAttribute('selected')
+      .catch(() => null);
+    const gallerySelected = await this.navigation.galleryTab
+      .getAttribute('selected')
+      .catch(() => null);
 
     let currentTab: EditorState['currentTab'];
     if (generateSelected !== null) currentTab = 'generate';
@@ -166,16 +183,16 @@ export class EditorPage {
 
   /** Navigate to the Generate tab */
   async goToGenerate(): Promise<void> {
-    await this.generateTab.click();
+    await this.navigation.goToGenerate();
   }
 
   /** Navigate to the Gallery tab */
   async goToGallery(): Promise<void> {
-    await this.galleryTab.click();
+    await this.navigation.goToGallery();
   }
 
   /** Go back to the Firefly homepage */
   async goBack(): Promise<void> {
-    await this.backButton.click();
+    await this.navigation.goBack();
   }
 }

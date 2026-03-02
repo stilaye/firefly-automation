@@ -1,5 +1,7 @@
 import { expect, type Locator, type Page } from '@playwright/test';
+import { BasePage } from './base.page';
 import { Logger } from '../../utils/logger';
+import { AuthenticationError } from '../../utils/errors';
 
 /**
  * Page Object Model for the Adobe Firefly login flow.
@@ -13,7 +15,7 @@ import { Logger } from '../../utils/logger';
  *   #11: { exact: true } on all getByRole / getByText locators
  *   #16: Action methods return void — test decides what comes next
  */
-export class LoginPage {
+export class LoginPage extends BasePage {
   /** Adobe IMS email input field */
   readonly emailInput: Locator;
 
@@ -35,7 +37,11 @@ export class LoginPage {
   /** "Welcome to Adobe Firefly" heading on the homepage */
   readonly welcomeHeading: Locator;
 
-  constructor(private page: Page) {
+  /**
+   *
+   */
+  constructor(page: Page) {
+    super(page);
     // Adobe IMS sign-in form locators
     // #11: { exact: true } on all role/label locators
     this.emailInput = page.getByLabel('Email address', { exact: true });
@@ -54,8 +60,7 @@ export class LoginPage {
 
   /** Navigate to the Firefly homepage (triggers login redirect if unauthenticated) */
   async navigateToLogin(): Promise<void> {
-    Logger.info('Navigating to Adobe Firefly homepage');
-    await this.page.goto('/');
+    await this.goto('/');
   }
 
   /**
@@ -66,11 +71,15 @@ export class LoginPage {
    */
   async signIn(email: string, password: string): Promise<void> {
     Logger.info(`Signing in with email: ${email}`);
-    await this.emailInput.fill(email); // #5: fill auto-waits — no pre-click needed
-    await this.continueButton.click();
-    await this.passwordInput.fill(password);
-    await this.signInButton.click();
-    Logger.info('Sign-in form submitted, waiting for redirect');
+    try {
+      await this.emailInput.fill(email); // #5: fill auto-waits — no pre-click needed
+      await this.continueButton.click();
+      await this.passwordInput.fill(password);
+      await this.signInButton.click();
+      Logger.info('Sign-in form submitted, waiting for redirect');
+    } catch (error) {
+      throw new AuthenticationError(`Login failed for ${email}`, error as Error);
+    }
   }
 
   /** Get the welcome message text from the Firefly homepage */

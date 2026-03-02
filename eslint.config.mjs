@@ -45,10 +45,25 @@ export default [
     },
 
     rules: {
+      // Playwright best practices
       'playwright/missing-playwright-await': 'error',
       'playwright/no-focused-test': 'warn',
+      'playwright/no-wait-for-timeout': 'warn',
+      'playwright/prefer-web-first-assertions': 'warn',
+      'playwright/require-top-level-describe': 'error',
+
+      // TypeScript strictness
+      '@typescript-eslint/no-explicit-any': 'warn',
+      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+      '@typescript-eslint/consistent-type-imports': 'error',
+
+      // General best practices
       'no-console': 'warn',
-      '@typescript-eslint/no-explicit-any': 'off',
+      eqeqeq: ['error', 'always', { null: 'ignore' }],
+      'no-var': 'error',
+      'prefer-const': 'error',
+
+      // JSDoc
       'jsdoc/require-jsdoc': [
         'warn',
         {

@@ -2,6 +2,7 @@ import { test as base, type Page, type BrowserContext } from '@playwright/test';
 import { Config } from '../utils/config';
 import { Logger } from '../utils/logger';
 import { LoginPage } from '../ui/pages/login.page';
+import { AuthenticationError } from '../utils/errors';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -51,7 +52,14 @@ export const authTest = base.extend<AuthFixtures>({
       await loginPage.signIn(Config.USERNAME, Config.PASSWORD);
 
       // Wait for redirect back to Firefly
-      await page.waitForURL('**/firefly.adobe.com/**', { timeout: 30000 });
+      try {
+        await page.waitForURL('**/firefly.adobe.com/**', { timeout: 30000 });
+      } catch (error) {
+        throw new AuthenticationError(
+          'Login redirect to Firefly timed out after 30s',
+          error as Error,
+        );
+      }
       await loginPage.saveStorageState(AUTH_FILE);
       Logger.info('Auth storage state saved successfully');
       await page.close();

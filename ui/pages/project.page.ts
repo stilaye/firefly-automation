@@ -1,4 +1,5 @@
-import { expect, type Locator, type Page } from '@playwright/test';
+import { type Locator, type Page } from '@playwright/test';
+import { BasePage } from './base.page';
 import { Logger } from '../../utils/logger';
 import { type FireflyProject } from '../ui.types';
 
@@ -7,8 +8,8 @@ import { type FireflyProject } from '../ui.types';
  *
  * URL: https://firefly.adobe.com/your-stuff
  *
- * This page shows the user's files, shared content, projects,
- * favorites, generation history, and deleted items.
+ * Manages files, shared content, projects, favorites, generation history,
+ * and deleted items.
  *
  * Anti-pattern compliance (Elaichenkov's 17 Playwright Mistakes):
  *   #2:  Web-first assertions only (toBeVisible) — NOT isVisible()
@@ -16,7 +17,7 @@ import { type FireflyProject } from '../ui.types';
  *   #11: { exact: true } on all getByRole / getByText locators
  *   #16: Action methods return void — test decides what comes next
  */
-export class ProjectPage {
+export class ProjectPage extends BasePage {
   /** Main files container */
   readonly filesContainer: Locator;
 
@@ -59,7 +60,11 @@ export class ProjectPage {
   /** Page heading showing the current section */
   readonly pageHeading: Locator;
 
-  constructor(private page: Page) {
+  /**
+   *
+   */
+  constructor(page: Page) {
+    super(page);
     // ── Priority 1: Role — accessibility tree, survives DOM refactors ───────
     // #11: { exact: true } on all getByRole locators
     this.createFolderButton = page.getByRole('button', { name: 'Create folder', exact: true });
@@ -89,9 +94,7 @@ export class ProjectPage {
 
   /** Navigate to the "Your stuff" page */
   async navigateToYourStuff(): Promise<void> {
-    Logger.info('Navigating to Your stuff page');
-    await this.page.goto('/your-stuff');
-    await expect(this.filesContainer).toBeVisible(); // #2: web-first
+    await this.goto('/your-stuff', this.filesContainer);
   }
 
   /** Navigate to the Projects section */
