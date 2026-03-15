@@ -1,0 +1,34 @@
+{
+  "SMOKE_ONLY": true,
+  "MAX_DIFF_PIXEL_RATIO": 0.01,
+  "pages": {
+    "smoke": [
+      {
+        "name": "merlin-login-default",
+        "path": "/web/chakravyuh/login",
+        "active": true,
+        "maskSelectors": []
+      },
+      {
+        "name": "merlin-reset-password-default",
+        "path": "/web/chakravyuh/resetpassword",
+        "active": true,
+        "maskSelectors": []
+      }
+    ],
+    "detailed": [
+      {
+        "name": "merlin-login-focused-userid",
+        "path": "/web/chakravyuh/login",
+        "active": true,
+        "maskSelectors": []
+      },
+      {
+        "name": "merlin-reset-filled-form",
+        "path": "/web/chakravyuh/resetpassword",
+        "active": true,
+        "maskSelectors": []
+      }
+    ]
+  }
+}

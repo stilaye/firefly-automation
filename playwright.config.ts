@@ -47,5 +47,15 @@ export default defineConfig({
       name: 'webkit',
       use: { ...devices['Desktop Safari'] },
     },
+
+    /* Abbott Merlin.net — separate base URL, no auth dependency */
+    {
+      name: 'abbott',
+      testMatch: /abbott\/.*/,
+      use: {
+        ...devices['Desktop Chrome'],
+        baseURL: 'https://www.merlin.net',
+      },
+    },
   ],
 });
