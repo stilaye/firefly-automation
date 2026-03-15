@@ -1,4 +1,4 @@
-import { test as base } from '@playwright/test';
+import { test as base, type Page, type TestInfo } from '@playwright/test';
 
 /**
  * Auto-fixture that captures a full-page screenshot on test failure
@@ -7,9 +7,14 @@ import { test as base } from '@playwright/test';
  * This runs automatically for every test — no explicit import needed
  * in test files (it's composed into the main `test` export).
  */
-export const screenshotTest = base.extend({
+
+type ScreenshotFixtures = {
+  screenshotOnFailure: void;
+};
+
+export const screenshotTest = base.extend<ScreenshotFixtures>({
   screenshotOnFailure: [
-    async ({ page }, use, testInfo) => {
+    async ({ page }: { page: Page }, use: (r: void) => Promise<void>, testInfo: TestInfo) => {
       await use(undefined);
 
       // After the test body runs, check if it failed

@@ -6,6 +6,7 @@ node_modules/
 .env
 .env.qa
 .env.prod
+.env.abbott
 .DS_Store
 auth.json
 allure-results/

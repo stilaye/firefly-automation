@@ -33,6 +33,8 @@ export const Tags = {
   performance: '@performance',
   /** Tests requiring authentication */
   authenticated: '@authenticated',
+  /** Abbott Merlin.net tests */
+  abbott: '@abbott',
 } as const;
 
 /** Union type of all valid tag values */
