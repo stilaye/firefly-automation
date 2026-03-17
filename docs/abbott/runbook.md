@@ -9,19 +9,29 @@ Automated Playwright test suite for **Abbott Merlin.net Patient Care Network** c
 
 **59 tests** across 7 spec files, running in ~30 seconds.
 
+## Prerequisites
+
+- Node.js v18+
+- npm
+- Playwright browsers installed (`npx playwright install`)
+
+No Abbott credentials are needed — all tests target pre-login (public) pages.
+
+> **Note:** The framework's `.env.dev` file must contain `USERNAME` and `PASSWORD` entries (they can be placeholder values like `placeholder@example.com` / `placeholder`). These are required by the shared auth fixture module at import time, even though Abbott tests do not use authenticated sessions.
+
 ## Quick Start
 
 ```bash
+# Install dependencies (first time only)
+npm install && npx playwright install
+
 # Run all Abbott tests
 npm run test:abbott
 
-# Run with visible browser (great for demos)
+# Run with visible browser
 npm run test:abbott -- --headed
 
-# Run only regression tests
-npx playwright test --project=abbott tests/abbott/login.regression.spec.ts tests/abbott/reset-password.regression.spec.ts
-
-# Show HTML report after run
+# Show HTML report after a run
 npx playwright show-report
 ```
 
@@ -31,7 +41,7 @@ npx playwright show-report
 |---|---|---|---|
 | `login.regression.spec.ts` | 14 | Regression | Form elements, footer links, password masking, forgot password navigation |
 | `reset-password.regression.spec.ts` | 15 | Regression | Form elements, heading, footer links, Cancel → login navigation |
-| `login.negative.spec.ts` | 10 | Security | XSS, SQL injection, unicode, empty fields, rapid submits, password exposure |
+| `login.negative.spec.ts` | 10 | Security | XSS, SQL injection, unicode, empty fields, rapid submit, password exposure |
 | `login.accessibility.spec.ts` | 7 | Accessibility | ARIA labels, keyboard Tab order, landmarks, placeholder labels, page title |
 | `reset-password.accessibility.spec.ts` | 6 | Accessibility | ARIA, tab order, required field indicators, visible labels, link names |
 | `login.visual.spec.ts` | 4 | Visual | Default state, focused User ID, focused Password, footer section |
@@ -59,11 +69,11 @@ tests/abbott/
 ├── login.negative.spec.ts
 ├── login.accessibility.spec.ts
 ├── login.visual.spec.ts
-├── login.visual.spec.ts-snapshots/     # Visual baselines (PNG)
+├── login.visual.spec.ts-snapshots/     # Visual baselines (PNG, macOS)
 ├── reset-password.regression.spec.ts
 ├── reset-password.accessibility.spec.ts
 ├── reset-password.visual.spec.ts
-├── reset-password.visual.spec.ts-snapshots/  # Visual baselines (PNG)
+├── reset-password.visual.spec.ts-snapshots/  # Visual baselines (PNG, macOS)
 └── visual-config/
     └── abbott.visual.config.json       # Data-driven visual config
 ```
@@ -158,7 +168,35 @@ npx playwright test --project=abbott tests/abbott/login.regression.spec.ts --deb
 npm run test:ui
 ```
 
+### Headed Mode (visible browser)
+
+```bash
+# All Abbott tests with visible browser
+npm run test:abbott -- --headed
+
+# Single spec file with visible browser
+npx playwright test --project=abbott tests/abbott/login.regression.spec.ts --headed
+```
+
+## Reports
+
+After any test run, view the interactive HTML report:
+
+```bash
+npx playwright show-report
+```
+
+The report includes pass/fail status, test duration, failure screenshots (auto-captured), and trace files on retries.
+
 ## Visual Regression
+
+### First Run on a New Machine
+
+Visual baselines are committed to git (in `*-snapshots/` directories) and are **platform-specific** (macOS). If running on a different OS (Linux, Windows), generate new baselines:
+
+```bash
+npx playwright test --project=abbott --grep @visual --update-snapshots
+```
 
 ### Updating Baselines
 
@@ -198,7 +236,7 @@ The login form inputs use `placeholder` attributes instead of `<label for="...">
 
 ### Form Submission Triggers Full Page Navigation
 
-Submitting the login form (even with invalid credentials) triggers a full page navigation through SiteMinder (`/siteminderagent/forms/login.fcc`) before redirecting back to the login URL. Tests that submit the form must account for this navigation by waiting for `domcontentloaded` and re-checking the URL pattern.
+Submitting the login form (even with invalid credentials) triggers a full page navigation through SiteMinder (`/siteminderagent/forms/login.fcc`) before redirecting back to the login URL. Tests that submit the form account for this navigation by waiting for `domcontentloaded` and re-checking the URL pattern.
 
 ## Updating Test Data
 
@@ -233,3 +271,13 @@ All UI strings, URLs, and test inputs are centralized in `data/abbott/abbott-tes
 | `@accessibility` | `AbbottTags.accessibility` | Accessibility tests |
 | `@security` | `AbbottTags.security` | Security/negative tests |
 | `@visual` | (string literal) | Visual regression tests |
+
+## Troubleshooting
+
+| Problem | Solution |
+|---|---|
+| `TestDataError: Missing required test data: "USERNAME"` | Add `USERNAME=placeholder@example.com` and `PASSWORD=placeholder` to `.env.dev` |
+| Visual tests fail with "Missing snapshot" | Run `npx playwright test --project=abbott --grep @visual --update-snapshots` to generate baselines |
+| Visual tests fail with pixel diff on Linux/Windows | Baselines are macOS-specific; regenerate with `--update-snapshots` on your platform |
+| Tests hang or time out | Check network connectivity to `https://www.merlin.net`; the site may be behind a VPN or firewall |
+| `npm run test:abbott` runs 0 tests | Ensure the `abbott` project exists in `playwright.config.ts` with `testMatch: /abbott\/.*/` |
